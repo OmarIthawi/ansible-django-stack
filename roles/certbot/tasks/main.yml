@@ -1,24 +1,46 @@
 ---
+- name: Remove old certificates
+  file: path=/etc/letsencrypt state=absent
+  when:
+    - certbot_force
 
 - name: Download certbot
   get_url: url=https://dl.eff.org/certbot-auto dest={{ certbot_script }} mode=0755
+  tags:
+    - certbot
 
 - name: Check if Nginx exists
   stat: path=/etc/init.d/nginx
   register: nginx_status
+  tags:
+    - certbot
 
 - name: Ensure Nginx is stopped
   service: name=nginx state=stopped
   when: nginx_status.stat.exists
+  tags:
+    - certbot
 
-- name: Install certbot and generate cert
-  command: "{{ certbot_script }} certonly --noninteractive --agree-tos --standalone --email {{ certbot_admin_email }} -d {{ inventory_hostname }}"
+- name: Install certbot and generate cert (with www)
+  command: "{{ certbot_script }} certonly --noninteractive --agree-tos --standalone --email {{ certbot_admin_email }} -d {{ nginx_server_name }}"
   args:
     creates: "{{ certbot_output_dir }}"
+  tags:
+    - certbot
+
+- name: Install certbot and generate cert (without www)
+  command: "{{ certbot_script }} certonly --noninteractive --agree-tos --standalone --email {{ certbot_admin_email }} -d {{ nginx_server_name_nonwww }}"
+  args:
+    creates: "{{ certbot_output_dir_nonwww }}"
+  when: (nginx_server_name_nonwww|trim) != ''
+  tags:
+    - certbot
 
 - name: Ensure Nginx is started
-  service: name=nginx state=started
+  service: name=nginx state=restarted
   when: nginx_status.stat.exists
+  tags:
+    - certbot
 
 - name: Ensure a cron job to auto-renew the cert exists
   cron: name="daily auto renew cert"
@@ -26,3 +48,6 @@
         job="{{ certbot_script }} renew --standalone --no-self-upgrade --pre-hook \"service nginx stop\" --post-hook \"service nginx start\" --quiet"
         state=present
   when: certbot_auto_renew
+  tags:
+   - certbot
+
