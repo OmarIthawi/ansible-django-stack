@@ -1,4 +1,8 @@
 ---
+- name: Remove old certificates
+  file: path=/etc/letsencrypt state=absent
+  when:
+    - certbot_force
 
 - name: Download certbot
   get_url: url=https://dl.eff.org/certbot-auto dest={{ certbot_script }} mode=0755
@@ -17,7 +21,7 @@
     creates: "{{ certbot_output_dir }}"
 
 - name: Ensure Nginx is started
-  service: name=nginx state=started
+  service: name=nginx state=restarted
   when: nginx_status.stat.exists
 
 - name: Ensure a cron job to auto-renew the cert exists

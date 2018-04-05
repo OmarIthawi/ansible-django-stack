@@ -1,6 +1,7 @@
 ---
 
 certbot_auto_renew: yes
+certbot_force: no
 certbot_admin_email: admin@example.com
 certbot_script: /opt/certbot-auto
 certbot_output_dir: "/etc/letsencrypt/live/{{ inventory_hostname }}"
